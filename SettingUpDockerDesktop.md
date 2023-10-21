@@ -59,9 +59,4 @@ In the "Docker Engine" section, find the "insecure-registries" configuration and
 Adding your insecure registry to the Docker Engine ensures that Docker can communicate with the specified registry without any security restrictions.
 
 With these configurations in place, your Docker environment is set up to work seamlessly with Tekton Pipelines, and you can confidently proceed with your development and CI/CD processes.
-Footer
-© 2023 GitHub, Inc.
-Footer navigation
-Terms
-Privacy
-Security
+
