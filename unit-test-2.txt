@@ -1,0 +1,131 @@
+// Test 2 including Pipelines in Pipelines:
+	prs2 := []*v1.PipelineRun{parse.MustParseV1PipelineRun(t, `
+metadata:
+  name: test-pipeline-run-success
+  namespace: foo2
+spec:
+  params:
+  - name: bar
+    value: somethingmorefun
+  pipelineRef:
+    name: test-pipeline
+  taskRunTemplate:
+    serviceAccountName: test-sa
+`)}
+	ps2 := []*v1.Pipeline{parse.MustParseV1Pipeline(t, `
+metadata:
+  name: test-pipeline
+  namespace: foo2
+spec:
+  params:
+  - default: somethingdifferent
+    name: pipeline-param
+    type: string
+  - default: revision
+    name: rev-param
+    type: string
+  - name: bar
+    type: string
+  tasks:
+  - name: unit-test-2
+    params:
+    - name: foo
+      value: somethingfun
+    - name: bar
+      value: $(params.bar)
+    - name: contextRunParam
+      value: $(context.pipelineRun.name)
+    - name: contextPipelineParam
+      value: $(context.pipeline.name)
+    - name: contextRetriesParam
+      value: $(context.pipelineTask.retries)
+    runAfter:
+    - unit-test-1
+    taskRef:
+      name: unit-test-task
+	  - name: unit-test-1
+	  params:
+	  - name: foo
+		value: somethingfun
+	  - name: bar
+		value: $(params.bar)
+	  - name: contextRunParam
+		value: $(context.pipelineRun.name)
+	  - name: contextPipelineParam
+		value: $(context.pipeline.name)
+	  - name: contextRetriesParam
+		value: $(context.pipelineTask.retries)
+	  retries: 5
+	  taskRef:
+		name: unit-test-task
+	- name: inner-pipeline-1
+	  params:
+	  - name: foo
+		value: somethingfun
+	  - name: bar
+		value: $(params.bar)
+	  - name: contextRunParam
+		value: $(context.pipelineRun.name)
+	  - name: contextPipelineParam
+		value: $(context.pipeline.name)
+	  - name: contextRetriesParam
+		value: $(context.pipelineTask.retries)
+	  runAfter:
+	  - unit-test-1
+	  pipelineRef:
+		name: inner
+	- name: unit-test-cluster-task
+	  params:
+	  - name: foo
+		value: somethingfun
+	  - name: bar
+		value: $(params.bar)
+	  - name: contextRunParam
+		value: $(context.pipelineRun.name)
+	  - name: contextPipelineParam
+		value: $(context.pipeline.name)
+	  taskRef:
+		kind: ClusterTask
+		name: unit-test-cluster-task
+  
+`), parse.MustParseV1Pipeline(t, `
+metadata:
+  name: test-inner-pipeline
+  namespace: inner
+spec:
+  params:
+  - default: somethingdifferent
+    name: pipeline-param
+    type: string
+  - default: revision
+    name: rev-param
+    type: string
+  - name: bar
+    type: string
+  tasks:
+  - name: unit-test-2
+    params:
+    - name: foo
+      value: somethingfun
+    - name: bar
+      value: $(params.bar)
+    - name: contextRunParam
+      value: $(context.pipelineRun.name)
+    - name: contextPipelineParam
+      value: $(context.pipeline.name)
+    - name: contextRetriesParam
+      value: $(context.pipelineTask.retries)
+    taskRef:
+      name: unit-test-task
+`)}
+
+	d1 := test.Data{
+		PipelineRuns: prs2,
+		Pipelines:    ps2,
+		Tasks:        ts,
+		ClusterTasks: clusterTasks,
+		ConfigMaps:   []*corev1.ConfigMap{newFeatureFlagsConfigMap()},
+	}
+
+	prt2 := newPipelineRunTest(t, d1)
+	defer prt2.Cancel()
